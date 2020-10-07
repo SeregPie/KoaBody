@@ -1,0 +1,33 @@
+{
+	"name": "@seregpie/koa-body",
+	"version": "1.0.1",
+	"description": "A simple body fetcher.",
+	"keywords": [
+		"body",
+		"buffer",
+		"fetch",
+		"json",
+		"koa",
+		"text"
+	],
+	"license": "MIT",
+	"author": "Sergej Sintschilin <seregpie@gmail.com>",
+	"files": [],
+	"main": "index.js",
+	"repository": "github:SeregPie/KoaBody",
+	"scripts": {
+		"test": "node test"
+	},
+	"dependencies": {
+		"bytes": "^3.1.0"
+	},
+	"devDependencies": {
+		"eslint": "^7.10.0",
+		"eslint-config-seregpie": "^1.0.1",
+		"koa": "^2.13.0",
+		"node-fetch": "^2.6.1"
+	},
+	"peerDependencies": {
+		"koa": "^2"
+	}
+}
