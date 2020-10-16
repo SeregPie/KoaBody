@@ -27,7 +27,7 @@ app.use(async ctx => {
 
 ---
 
-Fetch the body as `application/json`. The default content length limit is 1mb.
+Fetch the body as `application/json`. The default limit of the content length is 1mb.
 
 ```javascript
 let body = await KoaBody.json(ctx);
@@ -43,7 +43,7 @@ let body = await KoaBody.json(ctx, {limit: '16mb'});
 
 ---
 
-Fetch the body as `text/plain`. The default content length limit is 56kb.
+Fetch the body as `text/plain`. The default limit of the content length is 56kb.
 
 ```javascript
 let body = await KoaBody.text(ctx);
