@@ -1,6 +1,6 @@
 # KoaBody
 
-A simple body fetcher.
+A simple body fetcher for Koa.
 
 ## dependencies
 
