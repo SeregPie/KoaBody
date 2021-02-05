@@ -1,9 +1,9 @@
 let bytes = require('bytes');
 
-let KoaBody = Object.assign(async function(ctx, {
+async function blob(ctx, {
 	limit = Infinity,
 } = {}) {
-	let req = ctx.req || ctx;
+	let {req} = ctx;
 	let minLength = 0;
 	let maxLength = bytes.parse(limit);
 	{
@@ -51,19 +51,33 @@ let KoaBody = Object.assign(async function(ctx, {
 		throw new Error();
 	}
 	return Buffer.concat(currentData);
-}, {
-	async text(ctx, {
-		limit = '56kb',
-		...options
-	} = {}) {
-		return `${await KoaBody(ctx, {limit, ...options})}`;
-	},
-	async json(ctx, {
-		limit = '1mb',
-		...options
-	} = {}) {
-		return JSON.parse(await KoaBody.text(ctx, {limit, ...options}));
-	},
-});
+}
 
-module.exports = KoaBody;
+async function text(ctx, {
+	limit = '56kb',
+	...options
+} = {}) {
+	let v = await blob(ctx, {limit, ...options});
+	return `${v}`;
+}
+
+async function json(ctx, {
+	limit = '1mb',
+	...options
+} = {}) {
+	let v = await text(ctx, {limit, ...options});
+	return JSON.parse(v);
+}
+
+module.exports = Object.assign(async function(ctx, options) {
+	if (ctx.is('text')) {
+		return await text(ctx, options);
+	}
+	if (ctx.is('json')) {
+		return await json(ctx, options);
+	}
+	return await blob(ctx, options);
+}, {
+	json,
+	text,
+});

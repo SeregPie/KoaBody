@@ -51,7 +51,7 @@ let body = await KoaBody.text(ctx);
 
 ---
 
-Fetch the body as a `Buffer`. The content length is unlimited.
+Detect the content type automatically.
 
 ```javascript
 let body = await KoaBody(ctx);
