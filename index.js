@@ -1,4 +1,6 @@
 let bytes = require('bytes');
+let formidable = require('formidable');
+let qs = require('qs');
 
 async function blob(ctx, {
 	limit = Infinity,
@@ -69,6 +71,26 @@ async function json(ctx, {
 	return JSON.parse(v);
 }
 
+// MIME sniffing
+async function form(ctx, {
+	limit = '56kb',
+	...options
+} = {}) {
+	console.log(ctx.headers);
+	let form = formidable({multiples: true});
+	await new Promise((resolve, reject) => {
+		form.parse(ctx.req, (error, fields, files) => {
+			if (error) {
+				reject(error);
+			} else {
+				console.log(fields, files);
+				resolve();
+			}
+		});
+	});
+	return {};
+}
+
 module.exports = Object.assign(async function(ctx, options) {
 	if (ctx.is('text')) {
 		return await text(ctx, options);
@@ -76,8 +98,12 @@ module.exports = Object.assign(async function(ctx, options) {
 	if (ctx.is('json')) {
 		return await json(ctx, options);
 	}
+	if (ctx.is('form')) {
+		return await form(ctx, options);
+	}
 	return await blob(ctx, options);
 }, {
 	json,
 	text,
+	form,
 });

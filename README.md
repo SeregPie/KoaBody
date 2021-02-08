@@ -2,10 +2,6 @@
 
 A simple body fetcher for Koa.
 
-## dependencies
-
-- [bytes](https://github.com/visionmedia/bytes.js)
-
 ## setup
 
 ```shell
