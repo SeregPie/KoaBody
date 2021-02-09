@@ -2,13 +2,18 @@ let bytes = require('bytes');
 let formidable = require('formidable');
 let qs = require('qs');
 let {promisify} = require('util');
-let {gunzip} = require('zlib');
+let {createGunzip} = require('zlib');
 
-gunzip = promisify(gunzip);
+function isObject(value) {
+	if (value) {
+		let type = typeof value;
+		return type === 'object' || type === 'function';
+	}
+	return false;
+}
 
 async function blob(ctx, {
 	limit = Infinity,
-	encoding,
 } = {}) {
 	let {req} = ctx;
 	let minLength = 0;
@@ -23,6 +28,28 @@ async function blob(ctx, {
 			maxLength = minLength;
 		}
 	}
+	{
+		let header = req.headers['content-encoding'];
+		switch (header) {
+			case 'gzip': {
+				let t = createGunzip();
+				req = req.pipe(t);
+				break;
+			}
+			case 'compress': {
+				break;
+			}
+			case 'deflate': {
+				break;
+			}
+			case 'identity': {
+				break;
+			}
+			case 'br': {
+				break;
+			}
+		}
+	}
 	let currentData = [];
 	let currentLength = 0;
 	let onData;
@@ -35,7 +62,7 @@ async function blob(ctx, {
 				.on('data', onData = (data => {
 					currentLength += data.length;
 					if (currentLength > maxLength) {
-						reject(new Error());
+						//reject(new Error());
 					}
 					currentData.push(data);
 				}))
@@ -55,30 +82,9 @@ async function blob(ctx, {
 		);
 	}
 	if (currentLength < minLength) {
-		throw new Error();
+		//throw new Error();
 	}
 	let buffer = Buffer.concat(currentData);
-	{
-		let header = req.headers['content-encoding'];
-		switch (header) {
-			case 'gzip': {
-				buffer = await gunzip(buffer);
-				break;
-			}
-			case 'compress': {
-				break;
-			}
-			case 'deflate': {
-				break;
-			}
-			case 'identity': {
-				break;
-			}
-			case 'br': {
-				break;
-			}
-		}
-	}
 	return buffer;
 }
 
@@ -92,6 +98,7 @@ async function text(ctx, {
 
 async function json(ctx, {
 	limit = '1mb',
+	strict = false,
 	...options
 } = {}) {
 	let v = await text(ctx, {limit, ...options});
@@ -118,12 +125,38 @@ async function form(ctx, {
 	return {};
 }
 
-module.exports = Object.assign(async function(ctx, options) {
-	if (ctx.is('text')) {
-		return await text(ctx, options);
+module.exports = Object.assign(async function(ctx, {
+	limit,
+	json: jsonOptions,
+	text: textOptions,
+	form: formOptions,
+	...options
+} = {}) {
+	let jsonLimit;
+	let textLimit;
+	let formLimit;
+	if (isObject(limit)) {
+		({
+			json: jsonLimit,
+			text: textLimit,
+			form: formLimit,
+		} = limit);
+	} else {
+		jsonLimit = textLimit = formLimit = limit;
 	}
 	if (ctx.is('json')) {
-		return await json(ctx, options);
+		return await json(ctx, {
+			limit: jsonLimit,
+			...jsonOptions,
+			...options,
+		});
+	}
+	if (ctx.is('text')) {
+		return await text(ctx, {
+			limit: textLimit,
+			...textOptions,
+			...options,
+		});
 	}
 	if (ctx.is('application/x-www-form-urlencoded')) {
 		let v = await text(ctx, options);
