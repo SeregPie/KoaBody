@@ -1,9 +1,14 @@
 let bytes = require('bytes');
 let formidable = require('formidable');
 let qs = require('qs');
+let {promisify} = require('util');
+let {gunzip} = require('zlib');
+
+gunzip = promisify(gunzip);
 
 async function blob(ctx, {
 	limit = Infinity,
+	encoding,
 } = {}) {
 	let {req} = ctx;
 	let minLength = 0;
@@ -52,7 +57,29 @@ async function blob(ctx, {
 	if (currentLength < minLength) {
 		throw new Error();
 	}
-	return Buffer.concat(currentData);
+	let buffer = Buffer.concat(currentData);
+	{
+		let header = req.headers['content-encoding'];
+		switch (header) {
+			case 'gzip': {
+				buffer = await gunzip(buffer);
+				break;
+			}
+			case 'compress': {
+				break;
+			}
+			case 'deflate': {
+				break;
+			}
+			case 'identity': {
+				break;
+			}
+			case 'br': {
+				break;
+			}
+		}
+	}
+	return buffer;
 }
 
 async function text(ctx, {
@@ -98,8 +125,14 @@ module.exports = Object.assign(async function(ctx, options) {
 	if (ctx.is('json')) {
 		return await json(ctx, options);
 	}
-	if (ctx.is('form')) {
-		return await form(ctx, options);
+	if (ctx.is('application/x-www-form-urlencoded')) {
+		let v = await text(ctx, options);
+		v = qs.parse(v, {
+			depth: Infinity,
+			parameterLimit: Infinity,
+		});
+		console.log(v);
+		return v;
 	}
 	return await blob(ctx, options);
 }, {

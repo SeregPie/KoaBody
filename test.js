@@ -5,13 +5,22 @@ let JustMyLuck = require('just-my-luck');
 let Koa = require('koa');
 let fetch = require('node-fetch');
 let {URLSearchParams} = require('url');
-let util = require('util');
+let {
+	isDeepStrictEqual,
+	promisify,
+} = require('util');
+let {gzip} = require('zlib');
+
+gzip = promisify(gzip);
 
 let KoaBody = require('./index');
 
 (async () => {
 
 	let app = new Koa();
+	app.on('error', () => {
+		// pass
+	});
 	let handle;
 	app.use(ctx => handle(ctx));
 	await new Promise(resolve => {
@@ -23,8 +32,9 @@ let KoaBody = require('./index');
 		{
 			let value;
 			handle = (async ctx => {
+				console.log(ctx.headers);
 				let body = await KoaBody(ctx);
-				if (!util.isDeepStrictEqual(body, value)) {
+				if (!isDeepStrictEqual(body, value)) {
 					throw 0;
 				}
 				ctx.body = null;
@@ -35,6 +45,18 @@ let KoaBody = require('./index');
 					let res = await fetch(origin, {
 						method: 'POST',
 						body: value,
+					});
+					assert(res.ok);
+				}
+				{
+					console.log(await gzip(value));
+					let res = await fetch(origin, {
+						method: 'POST',
+						headers: {
+							'Content-Encoding': 'gzip',
+							'Content-Type': 'text/plain',
+						},
+						body: await gzip(value),
 					});
 					assert(res.ok);
 				}
@@ -67,23 +89,42 @@ let KoaBody = require('./index');
 					assert(!res.ok);
 				}
 			}
+			{
+				value = {a: 'aaa', b: 'bbb'};
+				{
+					let data = new URLSearchParams();
+					Object.entries(value).forEach(([key, value]) => {
+						data.append(key, value);
+					});
+					let res = await fetch(origin, {
+						method: 'POST',
+						body: data,
+					});
+					assert(res.ok);
+				}
+				{
+					let value = {a: 'bbb', b: 'aaa'};
+					let data = new URLSearchParams();
+					Object.entries(value).forEach(([key, value]) => {
+						data.append(key, value);
+					});
+					let res = await fetch(origin, {
+						method: 'POST',
+						body: data,
+					});
+					assert(!res.ok);
+				}
+			}
 		}
 		{
 			handle = (async ctx => {
-				console.log(ctx.headers)
-				await KoaBody(ctx, {limit: '4b'});
+				await KoaBody(ctx, {limit: '2b'});
+				ctx.body = null;
 			});
 			{
 				let res = await fetch(origin, {
 					method: 'POST',
 					body: 'a',
-				});
-				assert(res.ok);
-			}
-			{
-				let res = await fetch(origin, {
-					method: 'POST',
-					body: 'aa',
 				});
 				assert(res.ok);
 			}
