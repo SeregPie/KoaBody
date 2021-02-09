@@ -5,13 +5,12 @@ let JustMyLuck = require('just-my-luck');
 let Koa = require('koa');
 let fetch = require('node-fetch');
 let {URLSearchParams} = require('url');
+let {isDeepStrictEqual} = require('util');
 let {
-	isDeepStrictEqual,
-	promisify,
-} = require('util');
-let {gzip} = require('zlib');
-
-gzip = promisify(gzip);
+	brotliCompressSync,
+	deflateSync,
+	gzipSync,
+} = require('zlib');
 
 let KoaBody = require('./index');
 
@@ -49,18 +48,6 @@ let KoaBody = require('./index');
 					assert(res.ok);
 				}
 				{
-					console.log(await gzip(value));
-					let res = await fetch(origin, {
-						method: 'POST',
-						headers: {
-							'Content-Encoding': 'gzip',
-							'Content-Type': 'text/plain',
-						},
-						body: await gzip(value),
-					});
-					assert(res.ok);
-				}
-				{
 					let value = 'bbb';
 					let res = await fetch(origin, {
 						method: 'POST',
@@ -87,6 +74,39 @@ let KoaBody = require('./index');
 						body: JSON.stringify(value),
 					});
 					assert(!res.ok);
+				}
+				{
+					let res = await fetch(origin, {
+						method: 'POST',
+						headers: {
+							'Content-Encoding': 'gzip',
+							'Content-Type': 'application/json',
+						},
+						body: gzipSync(JSON.stringify(value)),
+					});
+					assert(res.ok);
+				}
+				{
+					let res = await fetch(origin, {
+						method: 'POST',
+						headers: {
+							'Content-Encoding': 'deflate',
+							'Content-Type': 'application/json',
+						},
+						body: deflateSync(JSON.stringify(value)),
+					});
+					assert(res.ok);
+				}
+				{
+					let res = await fetch(origin, {
+						method: 'POST',
+						headers: {
+							'Content-Encoding': 'br',
+							'Content-Type': 'application/json',
+						},
+						body: brotliCompressSync(JSON.stringify(value)),
+					});
+					assert(res.ok);
 				}
 			}
 			{

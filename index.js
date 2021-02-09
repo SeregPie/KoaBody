@@ -1,8 +1,13 @@
 let bytes = require('bytes');
 let formidable = require('formidable');
 let qs = require('qs');
-let {promisify} = require('util');
-let {createGunzip} = require('zlib');
+let {
+	createBrotliDecompress,
+	createGunzip,
+	createInflate,
+} = require('zlib');
+
+let {isArray} = Array;
 
 function isObject(value) {
 	if (value) {
@@ -18,6 +23,7 @@ async function blob(ctx, {
 	let {req} = ctx;
 	let minLength = 0;
 	let maxLength = bytes.parse(limit);
+	let {headers} = req;
 	{
 		let header = req.headers['content-length'];
 		if (header) {
@@ -30,23 +36,29 @@ async function blob(ctx, {
 	}
 	{
 		let header = req.headers['content-encoding'];
-		switch (header) {
-			case 'gzip': {
-				let t = createGunzip();
-				req = req.pipe(t);
-				break;
-			}
-			case 'compress': {
-				break;
-			}
-			case 'deflate': {
-				break;
-			}
-			case 'identity': {
-				break;
-			}
-			case 'br': {
-				break;
+		if (header) {
+			switch (header) {
+				case 'gzip': {
+					let z = createGunzip();
+					req = req.pipe(z);
+					break;
+				}
+				case 'deflate': {
+					let z = createInflate();
+					req = req.pipe(z);
+					break;
+				}
+				case 'identity': {
+					break;
+				}
+				case 'br': {
+					let z = createBrotliDecompress();
+					req = req.pipe(z);
+					break;
+				}
+				default: {
+					throw new Error();
+				}
 			}
 		}
 	}
@@ -81,6 +93,11 @@ async function blob(ctx, {
 			.removeListener('close', onClose)
 		);
 	}
+	console.log(
+		headers['content-length'],
+		req.bytesWritten,
+		currentLength,
+	);
 	if (currentLength < minLength) {
 		//throw new Error();
 	}
@@ -102,7 +119,13 @@ async function json(ctx, {
 	...options
 } = {}) {
 	let v = await text(ctx, {limit, ...options});
-	return JSON.parse(v);
+	v = JSON.parse(v);
+	if (strict) {
+		if (!isArray(v) && !isObject(v)) {
+			throw new Error();
+		}
+	}
+	return v;
 }
 
 // MIME sniffing
@@ -132,42 +155,56 @@ module.exports = Object.assign(async function(ctx, {
 	form: formOptions,
 	...options
 } = {}) {
-	let jsonLimit;
-	let textLimit;
-	let formLimit;
-	if (isObject(limit)) {
-		({
-			json: jsonLimit,
-			text: textLimit,
-			form: formLimit,
-		} = limit);
-	} else {
-		jsonLimit = textLimit = formLimit = limit;
+	try {
+		let jsonLimit;
+		let textLimit;
+		let formLimit;
+		if (isObject(limit)) {
+			({
+				json: jsonLimit,
+				text: textLimit,
+				form: formLimit,
+			} = limit);
+		} else {
+			jsonLimit = textLimit = formLimit = limit;
+		}
+		if (ctx.is('json')) {
+			return await json(ctx, {
+				limit: jsonLimit,
+				...jsonOptions,
+				...options,
+			});
+		}
+		if (ctx.is('text')) {
+			return await text(ctx, {
+				limit: textLimit,
+				...textOptions,
+				...options,
+			});
+		}
+		if (ctx.is('application/x-www-form-urlencoded')) {
+			let v = await text(ctx, options);
+			v = qs.parse(v, {
+				depth: Infinity,
+				parameterLimit: Infinity,
+			});
+			console.log(v);
+			return v;
+		}
+		if (ctx.is('multipart/form-data')) {
+			let v = await text(ctx, options);
+			v = qs.parse(v, {
+				depth: Infinity,
+				parameterLimit: Infinity,
+			});
+			console.log(v);
+			return v;
+		}
+		return await blob(ctx, options);
+	} catch (error) {
+		console.error(error);
+		throw error;
 	}
-	if (ctx.is('json')) {
-		return await json(ctx, {
-			limit: jsonLimit,
-			...jsonOptions,
-			...options,
-		});
-	}
-	if (ctx.is('text')) {
-		return await text(ctx, {
-			limit: textLimit,
-			...textOptions,
-			...options,
-		});
-	}
-	if (ctx.is('application/x-www-form-urlencoded')) {
-		let v = await text(ctx, options);
-		v = qs.parse(v, {
-			depth: Infinity,
-			parameterLimit: Infinity,
-		});
-		console.log(v);
-		return v;
-	}
-	return await blob(ctx, options);
 }, {
 	json,
 	text,
