@@ -17,99 +17,250 @@ function isObject(value) {
 	return false;
 }
 
-async function blob(ctx, {
+class MyError extends Error {
+	constructor(status, message) {
+		super(message);
+		Object.assign(this, {status});
+	}
+}
+
+
+async function cccc() {
+
+}
+
+
+// length know
+async function a1(req, {
 	limit = Infinity,
+	lengthRequired = false,
 } = {}) {
-	let {req} = ctx;
-	let minLength = 0;
-	let maxLength = bytes.parse(limit);
-	let {headers} = req;
+	let maxLength;
+	let requiredLength;
+	{
+		if (requiredLength > maxLength) {
+			throw new MyError(413, 'Payload Too Large');
+		}
+	}
+	let currentLength = 0;
+	{
+		let onData;
+		let onEnd;
+		let onError;
+		let onClose;
+		try {
+			await new Promise((resolve, reject) => {
+				(req
+					.on('data', onData = (({length}) => {
+						currentLength += length;
+						try {
+							if (currentLength > requiredLength) {
+								throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+							}
+						} catch (error) {
+							reject(error);
+						}
+					}))
+					.on('end', onEnd = resolve)
+					.on('error', onError = (() => {
+						reject(new MyError(500, 'Internal Server Error'));
+					}))
+					.on('close', onClose = (() => {
+						reject(new MyError(500, 'Internal Server Error'));
+					}))
+				);
+			});
+		} finally {
+			(req
+				.off('data', onData)
+				.off('end', onEnd)
+				.off('error', onError)
+				.off('close', onClose)
+			);
+		}
+	}
+	if (currentLength < requiredLength) {
+		throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+	}
+}
+
+// length unknow
+async function a2(req, {
+	limit = Infinity,
+	lengthRequired = false,
+} = {}) {
+	let maxLength;
+	let requiredLength;
+	let currentLength = 0;
+	{
+		let onData;
+		let onEnd;
+		let onError;
+		let onClose;
+		try {
+			await new Promise((resolve, reject) => {
+				(req
+					.on('data', onData = (({length}) => {
+						currentLength += length;
+						try {
+							if (currentLength > maxLength) {
+								throw new MyError(413, 'Payload Too Large');
+							}
+						} catch (error) {
+							reject(error);
+						}
+					}))
+					.on('end', onEnd = resolve)
+					.on('error', onError = (() => {
+						reject(new MyError(500, 'Internal Server Error'));
+					}))
+					.on('close', onClose = (() => {
+						reject(new MyError(500, 'Internal Server Error'));
+					}))
+				);
+			});
+		} finally {
+			(req
+				.off('data', onData)
+				.off('end', onEnd)
+				.off('error', onError)
+				.off('close', onClose)
+			);
+		}
+	}
+}
+
+async function aaaa(req, {
+	limit = Infinity,
+	required = false,
+	lengthRequired = false,
+} = {}) {
+	let maxLength = bytes.parse(limit); // todo
+	let currentLength = 0;
 	{
 		let header = req.headers['content-length'];
 		if (header) {
-			minLength = Number(header);
-			if (minLength > maxLength) {
-				throw new Error();
+			let requiredLength = Number(header); // todo: validate
+			if (requiredLength > maxLength) {
+				throw new MyError(413, 'Payload Too Large');
 			}
-			maxLength = minLength;
+			on111 = (() => {
+				if (currentLength > requiredLength) {
+					throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+				}
+			});
+			on222 = (() => {
+				if (currentLength < requiredLength) {
+					throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+				}
+			});
+		} else
+		if (lengthRequired) {
+			throw new MyError(411, 'Length Required');
+		} else {
+			on111 = (() => {
+				if (currentLength > maxLength) {
+					throw new MyError(413, 'Payload Too Large');
+				}
+			});
 		}
 	}
 	{
 		let header = req.headers['content-encoding'];
 		if (header) {
-			switch (header) {
+			let encoding = header;
+			switch (encoding) {
 				case 'gzip': {
-					let z = createGunzip();
-					req = req.pipe(z);
+					z = createGunzip();
 					break;
 				}
 				case 'deflate': {
-					let z = createInflate();
-					req = req.pipe(z);
+					z = createInflate();
 					break;
 				}
 				case 'identity': {
 					break;
 				}
 				case 'br': {
-					let z = createBrotliDecompress();
-					req = req.pipe(z);
+					z = createBrotliDecompress();
 					break;
 				}
 				default: {
-					throw new Error();
+					throw new MyError(415, 'Unsupported Media Type');
 				}
 			}
 		}
 	}
-	let currentData = [];
-	let currentLength = 0;
-	let onData;
-	let onEnd;
-	let onError;
-	let onClose;
-	try {
-		await new Promise((resolve, reject) => {
+	{
+		let onData;
+		let onEnd;
+		let onError;
+		let onClose;
+		try {
+			await new Promise((resolve, reject) => {
+				(req
+					.on('data', onData = (({length}) => {
+						currentLength += length;
+						try {
+							on111();
+						} catch (error) {
+							reject(error);
+						}
+					}))
+					.on('end', onEnd = resolve)
+					.on('error', onError = (() => {
+						reject(new MyError(500, 'Internal Server Error'));
+					}))
+					.on('close', onClose = (() => {
+						reject(new MyError(500, 'Internal Server Error'));
+					}))
+				);
+			});
+		} finally {
 			(req
-				.on('data', onData = (data => {
-					currentLength += data.length;
-					if (currentLength > maxLength) {
-						//reject(new Error());
-					}
-					currentData.push(data);
-				}))
-				.on('end', onEnd = resolve)
-				.on('error', onError = reject)
-				.on('close', onClose = (() => {
-					reject(new Error());
-				}))
+				.off('data', onData)
+				.off('end', onEnd)
+				.off('error', onError)
+				.off('close', onClose)
 			);
+		}
+	}
+	on222();
+	if (ctx.is('json')) {
+		let {
+			strict = false,
+		} = jsonOptions;
+		let v = JSON.parse(await toString(req));
+		if (strict) {
+			if (!isArray(v) && !isObject(v)) {
+				throw new Error();
+			}
+		}
+	}
+	if (ctx.is('text')) {
+		let v = await toString(req);
+	}
+	if (ctx.is('application/x-www-form-urlencoded')) {
+		v = qs.parse(await toString(req), {
+			depth: Infinity,
+			parameterLimit: Infinity,
 		});
-	} finally {
-		(req
-			.removeListener('data', onData)
-			.removeListener('end', onEnd)
-			.removeListener('error', onError)
-			.removeListener('close', onClose)
-		);
+		console.log(v);
+		return v;
 	}
-	console.log(
-		headers['content-length'],
-		req.bytesWritten,
-		currentLength,
-	);
-	if (currentLength < minLength) {
-		//throw new Error();
+	if (ctx.is('multipart/form-data')) {
+		let v = {};
+		on('file')
+		on('data')
 	}
-	let buffer = Buffer.concat(currentData);
-	return buffer;
+	throw new MyError(415, 'Unsupported Media Type');
 }
 
 async function text(ctx, {
 	limit = '56kb',
 	...options
 } = {}) {
-	let v = await blob(ctx, {limit, ...options});
+	let v = await aaaa(ctx, {limit, ...options});
 	return `${v}`;
 }
 
@@ -200,7 +351,7 @@ module.exports = Object.assign(async function(ctx, {
 			console.log(v);
 			return v;
 		}
-		return await blob(ctx, options);
+		return await aaaa(ctx, options);
 	} catch (error) {
 		console.error(error);
 		throw error;

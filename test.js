@@ -12,6 +12,8 @@ let {
 	gzipSync,
 } = require('zlib');
 
+let {pipeline, finished} = require('stream');
+
 let KoaBody = require('./index');
 
 (async () => {
@@ -31,11 +33,45 @@ let KoaBody = require('./index');
 		{
 			let value;
 			handle = (async ctx => {
-				console.log(ctx.headers);
-				let body = await KoaBody(ctx);
+				let {req} = ctx;
+				(req
+					.on('data', data => {
+						console.log('onData', 1, data);
+					})
+					.on('data', data => {
+						console.log('onData', 2, data);
+					})
+					.on('end', () => {
+						console.log('onEnd', 1);
+					})
+					.on('error', () => {
+						console.log('onError', 1);
+					})
+					.on('close', () => {
+						console.log('onClose', 1);
+					})
+				);
+				let a = pipeline(req, (arg0, arg1) => {
+					console.log('pipeline', arg1);
+					throw new Error('WOOOT');
+				}, (err) => {
+					if (err) {
+						console.error('Pipeline failed.', err);
+					} else {
+						console.log('Pipeline succeeded.');
+					}
+				});
+				finished(a, (err) => {
+					if (err) {
+						console.error('finished failed.', err);
+					} else {
+						console.log('finished succeeded.');
+					}
+				});
+				/*let body = await KoaBody(ctx);
 				if (!isDeepStrictEqual(body, value)) {
 					throw 0;
-				}
+				}*/
 				ctx.body = null;
 			});
 			{
