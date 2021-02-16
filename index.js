@@ -17,6 +17,14 @@ function isObject(value) {
 	return false;
 }
 
+function parseBytes(string) {
+	return require('bytes').parse(string);
+}
+
+function parseContentType(string) {
+	return require('content-type').parse(string);
+}
+
 class MyError extends Error {
 	constructor(status, message) {
 		super(message);
@@ -25,7 +33,13 @@ class MyError extends Error {
 }
 
 
-async function cccc() {
+async function cccc(
+	source,
+	target,
+	requiredLength,
+	maxLength,
+
+) {
 
 }
 
@@ -306,58 +320,52 @@ module.exports = Object.assign(async function(ctx, {
 	form: formOptions,
 	...options
 } = {}) {
-	try {
-		let jsonLimit;
-		let textLimit;
-		let formLimit;
-		if (isObject(limit)) {
-			({
-				json: jsonLimit,
-				text: textLimit,
-				form: formLimit,
-			} = limit);
-		} else {
-			jsonLimit = textLimit = formLimit = limit;
-		}
-		if (ctx.is('json')) {
-			return await json(ctx, {
-				limit: jsonLimit,
-				...jsonOptions,
-				...options,
-			});
-		}
-		if (ctx.is('text')) {
-			return await text(ctx, {
-				limit: textLimit,
-				...textOptions,
-				...options,
-			});
-		}
-		if (ctx.is('application/x-www-form-urlencoded')) {
-			let v = await text(ctx, options);
-			v = qs.parse(v, {
-				depth: Infinity,
-				parameterLimit: Infinity,
-			});
-			console.log(v);
-			return v;
-		}
-		if (ctx.is('multipart/form-data')) {
-			let v = await text(ctx, options);
-			v = qs.parse(v, {
-				depth: Infinity,
-				parameterLimit: Infinity,
-			});
-			console.log(v);
-			return v;
-		}
-		return await aaaa(ctx, options);
-	} catch (error) {
-		console.error(error);
-		throw error;
+	let jsonLimit;
+	let textLimit;
+	let formLimit;
+	if (isObject(limit)) {
+		({
+			json: jsonLimit,
+			text: textLimit,
+			form: formLimit,
+		} = limit);
+	} else {
+		jsonLimit = textLimit = formLimit = limit;
 	}
+	if (ctx.is('json')) {
+		return await json(ctx, {
+			limit: jsonLimit,
+			...jsonOptions,
+			...options,
+		});
+	}
+	if (ctx.is('text')) {
+		return await text(ctx, {
+			limit: textLimit,
+			...textOptions,
+			...options,
+		});
+	}
+	if (ctx.is('application/x-www-form-urlencoded')) {
+		let v = await text(ctx, options);
+		v = qs.parse(v, {
+			depth: Infinity,
+			parameterLimit: Infinity,
+		});
+		console.log(v);
+		return v;
+	}
+	if (ctx.is('multipart/form-data')) {
+		let v = await text(ctx, options);
+		v = qs.parse(v, {
+			depth: Infinity,
+			parameterLimit: Infinity,
+		});
+		console.log(v);
+		return v;
+	}
+
 }, {
 	json,
 	text,
-	form,
 });
