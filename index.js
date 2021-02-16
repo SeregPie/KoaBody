@@ -25,11 +25,16 @@ function parseContentType(string) {
 	return require('content-type').parse(string);
 }
 
-class MyError extends Error {
+class KoaError extends Error {
 	constructor(status, message) {
 		super(message);
 		Object.assign(this, {status});
 	}
+}
+
+async function text() {
+	let charset = parseContentType();
+	return buffer.toString(charset);
 }
 
 
@@ -53,7 +58,7 @@ async function a1(req, {
 	let requiredLength;
 	{
 		if (requiredLength > maxLength) {
-			throw new MyError(413, 'Payload Too Large');
+			throw new KoaError(413, 'Payload Too Large');
 		}
 	}
 	let currentLength = 0;
@@ -69,7 +74,7 @@ async function a1(req, {
 						currentLength += length;
 						try {
 							if (currentLength > requiredLength) {
-								throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+								throw new KoaError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
 							}
 						} catch (error) {
 							reject(error);
@@ -77,10 +82,10 @@ async function a1(req, {
 					}))
 					.on('end', onEnd = resolve)
 					.on('error', onError = (() => {
-						reject(new MyError(500, 'Internal Server Error'));
+						reject(new KoaError(500, 'Internal Server Error'));
 					}))
 					.on('close', onClose = (() => {
-						reject(new MyError(500, 'Internal Server Error'));
+						reject(new KoaError(500, 'Internal Server Error'));
 					}))
 				);
 			});
@@ -94,7 +99,7 @@ async function a1(req, {
 		}
 	}
 	if (currentLength < requiredLength) {
-		throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+		throw new KoaError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
 	}
 }
 
@@ -118,7 +123,7 @@ async function a2(req, {
 						currentLength += length;
 						try {
 							if (currentLength > maxLength) {
-								throw new MyError(413, 'Payload Too Large');
+								throw new KoaError(413, 'Payload Too Large');
 							}
 						} catch (error) {
 							reject(error);
@@ -126,10 +131,10 @@ async function a2(req, {
 					}))
 					.on('end', onEnd = resolve)
 					.on('error', onError = (() => {
-						reject(new MyError(500, 'Internal Server Error'));
+						reject(new KoaError(500, 'Internal Server Error'));
 					}))
 					.on('close', onClose = (() => {
-						reject(new MyError(500, 'Internal Server Error'));
+						reject(new KoaError(500, 'Internal Server Error'));
 					}))
 				);
 			});
@@ -156,25 +161,25 @@ async function aaaa(req, {
 		if (header) {
 			let requiredLength = Number(header); // todo: validate
 			if (requiredLength > maxLength) {
-				throw new MyError(413, 'Payload Too Large');
+				throw new KoaError(413, 'Payload Too Large');
 			}
 			on111 = (() => {
 				if (currentLength > requiredLength) {
-					throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+					throw new KoaError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
 				}
 			});
 			on222 = (() => {
 				if (currentLength < requiredLength) {
-					throw new MyError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
+					throw new KoaError(400, 'ERR_CONTENT_LENGTH_MISMATCH');
 				}
 			});
 		} else
 		if (lengthRequired) {
-			throw new MyError(411, 'Length Required');
+			throw new KoaError(411, 'Length Required');
 		} else {
 			on111 = (() => {
 				if (currentLength > maxLength) {
-					throw new MyError(413, 'Payload Too Large');
+					throw new KoaError(413, 'Payload Too Large');
 				}
 			});
 		}
@@ -200,7 +205,7 @@ async function aaaa(req, {
 					break;
 				}
 				default: {
-					throw new MyError(415, 'Unsupported Media Type');
+					throw new KoaError(415, 'Unsupported Media Type');
 				}
 			}
 		}
@@ -223,10 +228,10 @@ async function aaaa(req, {
 					}))
 					.on('end', onEnd = resolve)
 					.on('error', onError = (() => {
-						reject(new MyError(500, 'Internal Server Error'));
+						reject(new KoaError(500, 'Internal Server Error'));
 					}))
 					.on('close', onClose = (() => {
-						reject(new MyError(500, 'Internal Server Error'));
+						reject(new KoaError(500, 'Internal Server Error'));
 					}))
 				);
 			});
@@ -267,7 +272,7 @@ async function aaaa(req, {
 		on('file')
 		on('data')
 	}
-	throw new MyError(415, 'Unsupported Media Type');
+	throw new KoaError(415, 'Unsupported Media Type');
 }
 
 async function text(ctx, {
